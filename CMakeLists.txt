@@ -24,6 +24,10 @@ endif()
 option(DRJIT_ENABLE_LLVM          "Build the Dr.Jit LLVM backend?" ON)
 option(DRJIT_ENABLE_CUDA          "Build the Dr.Jit CUDA backend?" ${DRJIT_ENABLE_CUDA_DEFAULT})
 option(DRJIT_ENABLE_METAL         "Build the Dr.Jit Metal backend? (Apple Silicon GPUs)" ${DRJIT_ENABLE_METAL_DEFAULT})
+# Off by default: the HIP backend needs ROCm, and unlike CUDA it is not
+# resolved lazily enough to be harmless when absent. Forwarded to drjit-core,
+# which owns the option of the same name.
+option(DRJIT_ENABLE_HIP           "Build the Dr.Jit HIP backend? (AMD GPUs)" OFF)
 option(DRJIT_ENABLE_AUTODIFF      "Build Dr.Jit automatic differentation library?" ON)
 option(DRJIT_ENABLE_PYTHON        "Build Python extension library?" ON)
 option(DRJIT_ENABLE_TESTS         "Build Dr.Jit test suite? (Warning, this takes *very* long to compile)" OFF)
@@ -118,6 +122,13 @@ if (DRJIT_ENABLE_METAL)
   message(STATUS "Dr.Jit: building the Metal backend.")
 else()
   message(STATUS "Dr.Jit: *not* building the Metal backend.")
+endif()
+
+if (DRJIT_ENABLE_HIP)
+  set(DRJIT_ENABLE_JIT TRUE)
+  message(STATUS "Dr.Jit: building the HIP backend.")
+else()
+  message(STATUS "Dr.Jit: *not* building the HIP backend.")
 endif()
 
 if (DRJIT_ENABLE_JIT)
@@ -267,6 +278,16 @@ if (DRJIT_MASTER_PROJECT)
         ${CMAKE_CURRENT_BINARY_DIR}/drjit/metal/ad.pyi
         ${CMAKE_CURRENT_BINARY_DIR}/drjit/metal/ad.py
         DESTINATION drjit/metal
+      )
+    endif()
+    if (DRJIT_ENABLE_HIP)
+      install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/drjit/hip/py.typed
+        ${CMAKE_CURRENT_BINARY_DIR}/drjit/hip/__init__.pyi
+        ${CMAKE_CURRENT_BINARY_DIR}/drjit/hip/__init__.py
+        ${CMAKE_CURRENT_BINARY_DIR}/drjit/hip/ad.pyi
+        ${CMAKE_CURRENT_BINARY_DIR}/drjit/hip/ad.py
+        DESTINATION drjit/hip
       )
     endif()
     install(FILES

@@ -302,6 +302,18 @@ def unflatten(desc, *flat):
         list(reversed(desc)))
 
 
+# Module path segment for each JIT backend. Written as a table rather than a
+# chain of pairwise string replacements: the previous form enumerated Metal and
+# CUDA and sent everything else to LLVM, so a backend added later was migrated
+# to the wrong type silently, with no error anywhere.
+_BACKEND_SEGMENT = {
+    dr.JitBackend.CUDA:  '.cuda.',
+    dr.JitBackend.LLVM:  '.llvm.',
+    dr.JitBackend.Metal: '.metal.',
+    dr.JitBackend.HIP:   '.hip.',
+}
+
+
 def _migrate_backend(value, target_backend):
     """Migrate a drjit array from one backend to another via numpy."""
     if not dr.is_array_v(value) or not dr.is_jit_v(value):
@@ -309,13 +321,16 @@ def _migrate_backend(value, target_backend):
     if dr.backend_v(value) == target_backend:
         return value
 
+    dst_seg = _BACKEND_SEGMENT.get(target_backend)
+    if dst_seg is None:
+        raise RuntimeError('_migrate_backend(): unsupported target backend '
+                           f'{target_backend}.')
+
     src_name = type(value).__module__ + '.' + type(value).__name__
-    if target_backend == dr.JitBackend.Metal:
-        dst_name = src_name.replace('.llvm.', '.metal.').replace('.cuda.', '.metal.')
-    elif target_backend == dr.JitBackend.CUDA:
-        dst_name = src_name.replace('.llvm.', '.cuda.').replace('.metal.', '.cuda.')
-    else:
-        dst_name = src_name.replace('.cuda.', '.llvm.').replace('.metal.', '.llvm.')
+    dst_name = src_name
+    for seg in _BACKEND_SEGMENT.values():
+        if seg != dst_seg:
+            dst_name = dst_name.replace(seg, dst_seg)
 
     import importlib
     parts = dst_name.rsplit('.', 1)

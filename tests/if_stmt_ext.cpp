@@ -77,6 +77,11 @@ NB_MODULE(if_stmt_ext, m) {
     bind<JitBackend::Metal>(metal);
 #endif
 
+#if defined(DRJIT_ENABLE_HIP)
+    nb::module_ hip = m.def_submodule("hip");
+    bind<JitBackend::HIP>(hip);
+#endif
+
     m.def("scalar_cond", &simple_cond<uint32_t>);
     m.def("packet_cond", &packet_cond);
 }

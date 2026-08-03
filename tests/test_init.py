@@ -531,7 +531,10 @@ def test23_init_from_ndarray_various_cases(t):
     v = tv(a)
     assert dr.all(v == [1, 2, 3])
 
-    if dr.backend_v(t) not in (dr.JitBackend.CUDA, dr.JitBackend.Metal):
+    # Only LLVM maps host memory in place; every device backend copies. Named
+    # positively so a newly added device backend takes the safe branch instead
+    # of silently inheriting the aliasing assumption.
+    if dr.backend_v(t) == dr.JitBackend.LLVM:
         a[1] = 5 # Should affect 'v' as well
         assert dr.any(v != [1, 2, 3])
         assert dr.all(v == [1, 5, 3])
@@ -569,7 +572,7 @@ def test24_init_tensor_from_ndarray(t):
     a = np.array([1, 2], dtype=np.float32)
     v = t(a)
     assert v.shape == (2,) and dr.all(v.array == (1, 2))
-    if dr.is_jit_v(t) and dr.backend_v(t) not in (dr.JitBackend.CUDA, dr.JitBackend.Metal):
+    if dr.backend_v(t) == dr.JitBackend.LLVM:  # see test23: LLVM alone aliases
         a[0] = 5
         assert dr.any(v.array != (1, 2)) and dr.all(v.array == (5, 2))
 
@@ -722,7 +725,7 @@ def test31_init_arrayx_from_tensor_and_ndarray(t):
 def test32_gpu_ndarray_is_copy(t):
     """GPU backends should copy ndarray data, not map it (bug A3/A5)."""
     import numpy as np
-    if dr.backend_v(t) not in (dr.JitBackend.CUDA, dr.JitBackend.Metal):
+    if dr.backend_v(t) == dr.JitBackend.LLVM:
         pytest.skip("GPU-only test")
     a = np.array([1, 2, 3], dtype=np.float32)
     v = t(a)

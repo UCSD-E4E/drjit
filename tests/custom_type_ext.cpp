@@ -186,6 +186,11 @@ NB_MODULE(custom_type_ext, m) {
     bind<JitBackend::Metal>(metal);
 #endif
 
+#if defined(DRJIT_ENABLE_HIP)
+    nb::module_ hip = m.def_submodule("hip");
+    bind<JitBackend::HIP>(hip);
+#endif
+
     // Tests: DRJIT_STRUCT, traversal mechanism, array/struct stringification
     m.def("struct_to_string", []{
         using Float = dr::Packet<float, 4>;

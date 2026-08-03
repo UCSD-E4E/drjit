@@ -117,6 +117,28 @@ void export_resample(nb::module_ &) {
               (dr::MetalArray<float>(Resampler::*)(const dr::MetalArray<float> &, uint32_t) const) &Resampler::resample_bwd,
               "target"_a.noconvert(), "stride"_a)
 #endif
+// All three precisions, matching the CUDA and LLVM blocks: gfx90a has
+// full-rate FP64. Metal above stops at float because Apple GPUs lack it.
+#if defined(DRJIT_ENABLE_HIP)
+         .def("resample_fwd",
+              (dr::HIPArray<dr::half>(Resampler::*)(const dr::HIPArray<dr::half> &, uint32_t) const) &Resampler::resample_fwd,
+              "source"_a.noconvert(), "stride"_a)
+         .def("resample_fwd",
+              (dr::HIPArray<float>(Resampler::*)(const dr::HIPArray<float> &, uint32_t) const) &Resampler::resample_fwd,
+              "source"_a.noconvert(), "stride"_a)
+         .def("resample_fwd",
+              (dr::HIPArray<double>(Resampler::*)(const dr::HIPArray<double> &, uint32_t) const) &Resampler::resample_fwd,
+              "source"_a.noconvert(), "stride"_a)
+         .def("resample_bwd",
+              (dr::HIPArray<dr::half>(Resampler::*)(const dr::HIPArray<dr::half> &, uint32_t) const) &Resampler::resample_bwd,
+              "target"_a.noconvert(), "stride"_a)
+         .def("resample_bwd",
+              (dr::HIPArray<float>(Resampler::*)(const dr::HIPArray<float> &, uint32_t) const) &Resampler::resample_bwd,
+              "target"_a.noconvert(), "stride"_a)
+         .def("resample_bwd",
+              (dr::HIPArray<double>(Resampler::*)(const dr::HIPArray<double> &, uint32_t) const) &Resampler::resample_bwd,
+              "target"_a.noconvert(), "stride"_a)
+#endif
          .def("resample_fwd",
               (dr::DynamicArray<dr::half>(Resampler::*)(const dr::DynamicArray<dr::half> &, uint32_t) const) &Resampler::resample_fwd,
               "source"_a.noconvert(), "stride"_a)

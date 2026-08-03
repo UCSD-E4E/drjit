@@ -53,9 +53,23 @@ extern const char *meta_get_name(ArrayMeta meta) noexcept;
 /// Look up the nanobind type associated with the given array metadata
 extern nb::handle meta_get_type(ArrayMeta meta, bool fail_if_missing = true);
 
+/// The bits that distinguish one array type from another, as 8 bytes.
+///
+/// Not a memcmp over the whole struct: ArrayMeta is 12 bytes since `backend`
+/// needed a third bit, and the second word is almost entirely padding, whose
+/// contents are indeterminate. The first word is still fully occupied by named
+/// fields, so zeroing the two that are not part of identity (`tsize_rel` and
+/// `talign`) leaves a padding-free 8 bytes to compare and to key a cache on.
+inline uint64_t meta_identity(ArrayMeta m) {
+    m.tsize_rel = m.talign = 0;
+    uint32_t lo, sh;
+    memcpy(&lo, &m, sizeof(lo));
+    memcpy(&sh, m.shape, sizeof(sh));
+    return (((uint64_t) lo) << 32) | sh;
+}
+
 inline bool operator==(ArrayMeta a, ArrayMeta b) {
-    a.talign = a.tsize_rel = b.talign = b.tsize_rel = 0;
-    return memcmp(&a, &b, sizeof(ArrayMeta)) == 0;
+    return meta_identity(a) == meta_identity(b);
 }
 
 inline bool operator!=(ArrayMeta a, ArrayMeta b) { return !operator==(a, b); }

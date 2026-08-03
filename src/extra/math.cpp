@@ -28,7 +28,8 @@ using Float64 = GenericArray<double>;
 
 /// Is the given backend a GPU backend with hardware transcendentals?
 static bool is_gpu(JitBackend backend) {
-    return backend == JitBackend::CUDA || backend == JitBackend::Metal;
+    return backend == JitBackend::CUDA || backend == JitBackend::Metal ||
+           backend == JitBackend::HIP;
 }
 
 #define DEFINE_MATH_OP(name)                                                   \

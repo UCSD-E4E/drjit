@@ -6,16 +6,19 @@ from dataclasses import dataclass
 import sys
 
 def skip_if_coopvec_not_supported(t):
+    # Third copy of this helper in the test suite (see also test_coop_vec.py and
+    # test_nn.py), and the third to enumerate backends by hand and omit one.
+    # Ask the library instead: an unsupported backend that gets this far reaches
+    # jitc_fail(), which aborts the whole pytest process rather than failing one
+    # test. The Metal skip stays hand-written -- it is a statement about frozen
+    # functions on Metal, not about the backend's capability, and there is no
+    # Apple hardware here to verify a change against.
     backend = dr.backend_v(t)
     if backend == dr.JitBackend.Metal:
         pytest.skip("Metal does not support cooperative vectors")
-    elif backend == dr.JitBackend.CUDA:
-        if dr.detail.cuda_version() < (12, 8):
-            pytest.skip("CUDA driver does not support cooperative vectors (Driver R570) or later is required")
-    elif backend == dr.JitBackend.LLVM:
-        if dr.detail.llvm_version() < (17, 0):
-            pytest.skip(f"LLVM version {dr.detail.llvm_version()} does not support"
-                        " cooperative vectors, LLVM 17.0 or later is required")
+    if not dr.detail.coop_vec_supported(backend):
+        pytest.skip(f"{backend} does not support cooperative vectors "
+                    "(CUDA needs 12.8 / driver R570+; LLVM needs 17.0+)")
 
 def get_single_entry(x):
     tp = type(x)
@@ -335,6 +338,13 @@ def test10b_scatter_reduce_f16(t, auto_opaque):
     (jit_var_scatter / jitc_var_narrow_promoted); this exercises the
     record/replay path of that narrow (RecordThreadState::narrow_f32_to_f16).
     """
+    # Ask whether the backend can do this at all rather than assuming it can.
+    # HIP cannot yet: gfx90a has global_atomic_pk_add_f16, but the emitter does
+    # not use it, and the FP32-shadow promotion above is still gated on
+    # jitc_is_metal(). Either would turn this test back on by itself.
+    if not dr.detail.can_scatter_reduce(t, dr.ReduceOp.Add):
+        pytest.skip(f"{dr.backend_v(t)} does not support float16 atomic add")
+
     UInt = dr.uint32_array_t(t)
 
     @dr.freeze(auto_opaque=auto_opaque)
@@ -704,13 +714,7 @@ def test22_gather_memcpy(t, auto_opaque):
 def get_pkg(t):
     with dr.detail.scoped_rtld_deepbind():
         m = pytest.importorskip("call_ext")
-    backend = dr.backend_v(t)
-    if backend == dr.JitBackend.LLVM:
-        return m.llvm
-    elif backend == dr.JitBackend.CUDA:
-        return m.cuda
-    elif backend == dr.JitBackend.Metal:
-        return getattr(m, "metal", None)
+    return pytest.get_backend_submodule(m, t)
 
 
 @pytest.mark.parametrize("symbolic", [True])

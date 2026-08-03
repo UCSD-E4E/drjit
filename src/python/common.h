@@ -126,3 +126,31 @@ inline nb::object get_traverse_cb_ro(nb::handle tp) {
 inline nb::object get_traverse_cb_rw(nb::handle tp) {
     return nb::getattr(tp, DR_STR(_traverse_1_cb_rw), nb::handle());
 }
+
+/// Does this backend keep its data in device memory the host cannot read?
+///
+/// A predicate rather than an enumeration at each use site, because the sites
+/// that need it were written as `backend == CUDA || backend == Metal` and a
+/// backend added later is then silently treated as host-resident: no error,
+/// just a pointer the consumer cannot dereference. This is the same shape of
+/// omission found in drjit-core's scatter-reduce capability table and in
+/// op.cpp's packet-op selection, so it is worth having one place to add to.
+inline bool is_device_backend(JitBackend backend) {
+    return backend == JitBackend::CUDA ||
+           backend == JitBackend::Metal ||
+           backend == JitBackend::HIP;
+}
+
+/// DLPack device type for a backend's memory, for __dlpack__ and friends.
+inline int32_t dlpack_device_type(JitBackend backend) {
+    switch (backend) {
+        case JitBackend::CUDA:  return nb::device::cuda::value;
+        // ROCm, not CUDA -- even under the development CUDA shim, where the
+        // pointer really is CUDA memory. The backend's meaning is what belongs
+        // in an interchange format; the shim is a scaffold, and encoding its
+        // artifact here would be wrong on every real AMD device.
+        case JitBackend::HIP:   return nb::device::rocm::value;
+        case JitBackend::Metal: return nb::device::metal::value;
+        default:                return nb::device::cpu::value;
+    }
+}

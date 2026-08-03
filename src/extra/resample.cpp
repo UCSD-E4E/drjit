@@ -765,4 +765,17 @@ template DRJIT_EXTRA_EXPORT MetalArray<half> Resampler::resample_bwd(const Metal
 template DRJIT_EXTRA_EXPORT MetalArray<float> Resampler::resample_bwd(const MetalArray<float> &, uint32_t) const;
 #endif
 
+// All three precisions, as for CUDA and LLVM. Metal above stops at float
+// because Apple GPUs have no FP64; gfx90a has it at full rate. Binding an
+// overload in src/python/resample.cpp without instantiating it here is a LINK
+// error, which is at least loud -- unlike most of the omissions in this port.
+#if defined(DRJIT_ENABLE_HIP)
+template DRJIT_EXTRA_EXPORT HIPArray<half> Resampler::resample_fwd(const HIPArray<half> &, uint32_t) const;
+template DRJIT_EXTRA_EXPORT HIPArray<float> Resampler::resample_fwd(const HIPArray<float> &, uint32_t) const;
+template DRJIT_EXTRA_EXPORT HIPArray<double> Resampler::resample_fwd(const HIPArray<double> &, uint32_t) const;
+template DRJIT_EXTRA_EXPORT HIPArray<half> Resampler::resample_bwd(const HIPArray<half> &, uint32_t) const;
+template DRJIT_EXTRA_EXPORT HIPArray<float> Resampler::resample_bwd(const HIPArray<float> &, uint32_t) const;
+template DRJIT_EXTRA_EXPORT HIPArray<double> Resampler::resample_bwd(const HIPArray<double> &, uint32_t) const;
+#endif
+
 NAMESPACE_END(drjit)

@@ -106,6 +106,25 @@ def _test_packages(name='p'):
         return pytest.mark.parametrize(name, array_packages)(func)
     return wrapped
 
+def get_backend_submodule(m, t):
+    """Return the `_ext` test module's submodule for `t`'s backend.
+
+    Each tests/*_ext.cpp defines one submodule per backend it was compiled
+    with, named after that backend. Seven test files each re-derived that
+    mapping as an if/elif chain over JitBackend, and all seven stopped at
+    Metal -- so on HIP `get_pkg()` returned None and every test using it failed
+    on `None.something`, pointing at the test rather than at the missing arm.
+
+    Looking the name up instead means a new backend needs no change here, and a
+    submodule that was not compiled in says so.
+    """
+    name = dr.backend_v(t).name.lower()
+    if name == 'invalid':  # the scalar (non-JIT) parameterizations
+        name = 'scalar'
+    if not hasattr(m, name):
+        pytest.skip(f"{m.__name__} was built without the '{name}' backend")
+    return getattr(m, name)
+
 @pytest.fixture(scope="function")
 def drjit_verbose():
     level = dr.log_level()
@@ -117,3 +136,4 @@ def pytest_configure():
     pytest.test_arrays = _test_arrays # type: ignore
     pytest.test_packages = _test_packages # type: ignore
     pytest.skip_on = skip_on
+    pytest.get_backend_submodule = get_backend_submodule # type: ignore

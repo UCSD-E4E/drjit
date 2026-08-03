@@ -4,9 +4,13 @@ import pytest
 import sys
 
 def skip_if_coopvec_not_supported(t):
-    if dr.backend_v(t) == dr.JitBackend.CUDA:
-        if dr.detail.cuda_version() < (12, 8):
-            pytest.skip("CUDA driver does not support cooperative vectors (Driver R570) or later is required")
+    # Ask the library rather than enumerating backends here. The previous form
+    # only knew about CUDA, so a backend without cooperative vectors at all
+    # (HIP) ran the tests anyway and died in jitc_fail(), which aborts -- taking
+    # the whole pytest process with it rather than reporting a skip.
+    if not dr.detail.coop_vec_supported(dr.backend_v(t)):
+        pytest.skip(f"{dr.backend_v(t)} does not support cooperative vectors "
+                    "(CUDA needs 12.8 / driver R570+; LLVM needs 17.0+)")
 
 @pytest.test_arrays('jit,float16,shape=(3, *),-diff', 'jit,float32,shape=(3, *),-diff')
 def test01_pack_unpack(t):
@@ -719,6 +723,7 @@ def test23_linear_layer_dtype(t):
 
 @pytest.test_arrays("jit,shape=(*),float16,diff")
 def test25_suspend_grad(t):
+    skip_if_coopvec_not_supported(t)
 
     x = t(1, 2, 3)
     y = t(2, 3, 4)

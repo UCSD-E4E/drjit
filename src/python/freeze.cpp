@@ -430,12 +430,14 @@ void FlatVariables::schedule_jit_variables(
                 case JitBackend::CUDA:  info_name = "CUDA";  break;
                 case JitBackend::LLVM:  info_name = "LLVM";  break;
                 case JitBackend::Metal: info_name = "Metal"; break;
+                case JitBackend::HIP:   info_name = "HIP";   break;
                 default: break;
             }
             switch (backend) {
                 case JitBackend::CUDA:  bk_name = "CUDA";  break;
                 case JitBackend::LLVM:  bk_name = "LLVM";  break;
                 case JitBackend::Metal: bk_name = "Metal"; break;
+                case JitBackend::HIP:   bk_name = "HIP";   break;
                 default: break;
             }
             jit_raise("freeze(): backend mismatch error (backend of this "

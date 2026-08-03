@@ -6,20 +6,16 @@ import gc
 def get_pkg(t):
     with dr.detail.scoped_rtld_deepbind():
         m = pytest.importorskip('call_ext')
-    backend = dr.backend_v(t)
-    if backend == dr.JitBackend.LLVM:
-        return m.llvm
-    elif backend == dr.JitBackend.CUDA:
-        return m.cuda
-    elif backend == dr.JitBackend.Metal:
-        return m.metal
+    return pytest.get_backend_submodule(m, t)
 
 def cleanup(s):
     """Remove memory addresses and backend names from a string """
     s = re.sub(r' at 0x[a-fA-F0-9]*',r'', s)
-    s = re.sub(r'\.llvm\.',r'.', s)
-    s = re.sub(r'\.cuda\.',r'.', s)
-    s = re.sub(r'\.metal\.',r'.', s)
+    # Derive the backend names rather than listing them: the hardcoded list
+    # stopped at 'metal', so on HIP the repr kept its '.hip.' infix and the
+    # failure read as a repr bug rather than a missing entry here.
+    for name in dr.JitBackend.__members__:
+        s = re.sub(r'\.%s\.' % name.lower(), r'.', s)
     return s
 
 @pytest.fixture(autouse=True)
@@ -497,12 +493,18 @@ def test14_array_call_self(t, symbolic, drjit_verbose, capsys):
     assert dr.all(c == d)
     transcript = capsys.readouterr().out
     if symbolic:
+        # How `self` appears depends on what the backend emits, not on which
+        # backend it is: LLVM emits IR, CUDA emits PTX (where `self` is a
+        # parameter in a comma-separated list), and the source-text backends
+        # (Metal, HIP) emit an assignment. Defaulting to the source form means a
+        # new source-emitting backend needs no arm here -- HIP hit the PTX
+        # branch and failed on a difference that was never about HIP.
         if dr.backend_v(t) == dr.JitBackend.LLVM:
             assert transcript.count('%self') > 0
-        elif dr.backend_v(t) == dr.JitBackend.Metal:
-            assert transcript.count('= self;') > 0
-        else:
+        elif dr.backend_v(t) == dr.JitBackend.CUDA:
             assert transcript.count(', self;') > 0
+        else:
+            assert transcript.count('= self;') > 0
     else:
         assert transcript.count('jit_var_gather') == 2
 

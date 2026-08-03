@@ -94,6 +94,7 @@ namespace detail {
     template <typename T> using is_cuda_det            = std::enable_if_t<T::IsDrJit && T::Derived::IsCUDA>;
     template <typename T> using is_llvm_det            = std::enable_if_t<T::IsDrJit && T::Derived::IsLLVM>;
     template <typename T> using is_metal_det           = std::enable_if_t<T::IsDrJit && T::Derived::IsMetal>;
+    template <typename T> using is_hip_det             = std::enable_if_t<T::IsDrJit && T::Derived::IsHIP>;
     template <typename T> using is_jit_det             = std::enable_if_t<T::IsDrJit && T::Derived::IsJIT>;
     template <typename T> using is_diff_det            = std::enable_if_t<T::IsDrJit && T::Derived::IsDiff>;
     template <typename T> using is_mask_det            = std::enable_if_t<T::IsDrJit && T::Derived::IsMask>;
@@ -146,6 +147,10 @@ template <typename T> using enable_if_llvm_array_t = enable_if_t<is_llvm_v<T>>;
 template <typename T>
 constexpr bool is_metal_v = is_detected_v<detail::is_metal_det, T>;
 template <typename T> using enable_if_metal_array_t = enable_if_t<is_metal_v<T>>;
+
+template <typename T>
+constexpr bool is_hip_v = is_detected_v<detail::is_hip_det, T>;
+template <typename T> using enable_if_hip_array_t = enable_if_t<is_hip_v<T>>;
 
 template <typename T>
 constexpr bool is_jit_v = is_detected_v<detail::is_jit_det, T>;
@@ -305,6 +310,14 @@ namespace detail {
 
     template <typename T> struct backend<T, enable_if_metal_array_t<T>> {
         static constexpr JitBackend value = JitBackend::Metal;
+    };
+
+    // Without this specialization the primary template applies and every HIP
+    // array reports JitBackend::None -- so drjit::bind() files its types under
+    // drjit.scalar and the drjit.hip namespace comes out empty, with no error
+    // anywhere near the cause.
+    template <typename T> struct backend<T, enable_if_hip_array_t<T>> {
+        static constexpr JitBackend value = JitBackend::HIP;
     };
 }
 

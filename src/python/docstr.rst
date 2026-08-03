@@ -4580,6 +4580,10 @@
 
     Dr.Jit backend targeting Apple Silicon GPUs using Metal Shading Language (MSL).
 
+.. topic:: JitBackend_HIP
+
+    Dr.Jit backend targeting AMD GPUs using HIP.
+
 .. topic:: VarType
 
     List of possible scalar array types (not all of them are supported).

@@ -21,7 +21,10 @@ def test01_traits(t):
             size = int(c)
             break
 
-    is_jit = "llvm" in tm or "cuda" in tm or "metal" in tm
+    # Derived from the module name rather than from dr.is_jit_v(), which is
+    # what the assertion below actually checks -- so this list has to name
+    # every JIT backend, and omitting one fails every parameterization of it.
+    is_jit = any(b in tm for b in ("llvm", "cuda", "metal", "hip"))
     if is_jit and "Int" in tn or "Float" in tn or "X" in tn:
         size = dr.Dynamic
 

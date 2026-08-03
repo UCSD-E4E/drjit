@@ -35,6 +35,11 @@ NB_MODULE(local_ext, m) {
     bind<dr::MetalArray<float>>(metal);
 #endif
 
+#if defined(DRJIT_ENABLE_HIP)
+    nb::module_ hip = m.def_submodule("hip");
+    bind<dr::HIPArray<float>>(hip);
+#endif
+
     nb::module_ scalar = m.def_submodule("scalar");
     bind<float>(scalar);
 }

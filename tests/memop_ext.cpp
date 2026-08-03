@@ -59,4 +59,8 @@ NB_MODULE(memop_ext, m) {
 #if defined(DRJIT_ENABLE_METAL)
     bind<JitBackend::Metal>(m.def_submodule("metal"));
 #endif
+
+#if defined(DRJIT_ENABLE_HIP)
+    bind<JitBackend::HIP>(m.def_submodule("hip"));
+#endif
 }

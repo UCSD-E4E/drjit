@@ -110,6 +110,11 @@ NB_MODULE(while_loop_ext, m) {
     bind<JitBackend::Metal>(metal);
 #endif
 
+#if defined(DRJIT_ENABLE_HIP)
+    nb::module_ hip = m.def_submodule("hip");
+    bind<JitBackend::HIP>(hip);
+#endif
+
     m.def("scalar_loop", &simple_loop<uint32_t>);
     m.def("packet_loop", &packet_loop);
 }

@@ -6,13 +6,7 @@ import sys
 def get_pkg(t):
     with dr.detail.scoped_rtld_deepbind():
         m = pytest.importorskip("memop_ext")
-    backend = dr.backend_v(t)
-    if backend == dr.JitBackend.LLVM:
-        return m.llvm
-    elif backend == dr.JitBackend.CUDA:
-        return m.cuda
-    elif backend == dr.JitBackend.Metal:
-        return m.metal
+    return pytest.get_backend_submodule(m, t)
 
 
 @pytest.test_arrays('float32,is_diff,shape=(*)')

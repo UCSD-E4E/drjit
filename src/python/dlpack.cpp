@@ -116,7 +116,7 @@ static nb::ndarray<> dlpack(nb::handle_t<ArrayBase> h, bool force_cpu, nb::handl
             JitBackend backend = (JitBackend) s2.backend;
 
             JitVar value = JitVar::borrow(index);
-            if (force_cpu && (backend == JitBackend::CUDA || backend == JitBackend::Metal))
+            if (force_cpu && is_device_backend(backend))
                 value = JitVar::steal(jit_var_migrate(value.index(),
                                                       JitBackend::None));
 
@@ -157,7 +157,7 @@ static nb::ndarray<> dlpack(nb::handle_t<ArrayBase> h, bool force_cpu, nb::handl
                 s2.init_index(ad_index | new_index, inst_ptr(tmp));
                 nb::inst_mark_ready(tmp);
 
-                if ((backend == JitBackend::CUDA || backend == JitBackend::Metal) && force_cpu)
+                if (is_device_backend(backend) && force_cpu)
                     owner = std::move(tmp);
                 else
                     nb::inst_replace_move(owner, tmp);
@@ -276,7 +276,15 @@ void export_dlpack(nb::module_ &) {
     ab.def("__dlpack__",
            [](nb::handle_t<ArrayBase> h, nb::handle stream) {
                const ArraySupplement &s = supp(h.type());
-               bool force_cpu = (JitBackend) s.backend == JitBackend::Metal;
+               // Copied to the host for Metal and HIP alike, though for
+               // different reasons: a Metal buffer is not a raw pointer a
+               // DLPack consumer can map, and a ROCm pointer is one we cannot
+               // TEST here -- there is no ROCm consumer on the development
+               // machine, and handing out an unverified device pointer is a
+               // segfault in the consumer rather than an error here. A copy is
+               // always safe; revisit on the MI210, where it can be checked.
+               JitBackend bk = (JitBackend) s.backend;
+               bool force_cpu = bk == JitBackend::Metal || bk == JitBackend::HIP;
                return dlpack(h, force_cpu, stream);
            }, "stream"_a = nb::none(), doc_dlpack)
       .def("__dlpack_device__",

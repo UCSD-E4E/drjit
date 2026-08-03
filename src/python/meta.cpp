@@ -57,6 +57,8 @@ dr::string meta_str(ArrayMeta m) {
             result += "  backend=llvm,\n";
         else if (m.backend == (uint16_t) JitBackend::Metal)
             result += "  backend=metal,\n";
+        else if (m.backend == (uint16_t) JitBackend::HIP)
+            result += "  backend=hip,\n";
         else
             result += "  backend=invalid,\n";
 
@@ -500,6 +502,7 @@ nb::handle meta_get_module(ArrayMeta meta) noexcept {
         case JitBackend::CUDA:  index = 1; break;
         case JitBackend::LLVM:  index = 3; break;
         case JitBackend::Metal: index = 5; break;
+        case JitBackend::HIP:   index = 7; break;
         default: break;
     }
     if ((JitBackend) meta.backend != JitBackend::None)
@@ -563,15 +566,11 @@ static tsl::robin_map<uint64_t, nb::handle, UInt64Hasher> meta_type_cache;
 
 /// Look up the nanobind type associated with the given array metadata
 nb::handle meta_get_type(ArrayMeta meta, bool fail_if_missing) {
-    static_assert(sizeof(ArrayMeta) == sizeof(uint64_t),
-                  "ArrayMeta is expected to occupy exactly 8 bytes");
-
-    // 'talign'/'tsize_rel' aren't part of type identity
-    ArrayMeta key = meta;
-    key.tsize_rel = key.talign = 0;
-
-    uint64_t cache_key;
-    memcpy(&cache_key, &key, sizeof(cache_key));
+    // 'talign'/'tsize_rel' aren't part of type identity; meta_identity() drops
+    // them and returns the remaining bits as a padding-free 8 bytes. It does
+    // not memcpy the struct, which is 12 bytes and mostly padding in its second
+    // word -- see the note beside ArrayMeta in drjit/python.h.
+    uint64_t cache_key = meta_identity(meta);
 
     auto it = meta_type_cache.find(cache_key);
     if (it != meta_type_cache.end())

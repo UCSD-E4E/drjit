@@ -33,6 +33,7 @@ template <typename Storage_, size_t Dimension> class Texture : TraversableBase {
 public:
     static constexpr bool IsCUDA = is_cuda_v<Storage_>;
     static constexpr bool IsMetal = is_metal_v<Storage_>;
+    static constexpr bool IsHIP = is_hip_v<Storage_>;
     static constexpr bool IsDynamic = is_dynamic_v<Storage_>;
     static constexpr bool IsHalf = std::is_same_v<scalar_t<Storage_>, drjit::half>;
     static constexpr bool IsSingle = std::is_same_v<scalar_t<Storage_>, float>;
@@ -40,6 +41,14 @@ public:
     static constexpr bool IsDiff = is_diff_v<Storage_> && !IsUInt8;
 
     // Half/single-precision float and normalized 8-bit hardware textures are supported
+    //
+    // HIP is deliberately absent, and should stay absent until measured. There
+    // are no jit_hip_tex_* entry points, so adding it here would switch on a
+    // path that does not exist; without it every `if constexpr (HasGPUTexture)`
+    // branch compiles out and the software path takes over automatically. That
+    // path is also strictly MORE accurate -- CUDA's texture units resolve the
+    // sub-texel position with 8 fractional bits -- so the only question is
+    // performance, and that needs an MI210 to answer.
     static constexpr bool HasGPUTexture =
         (IsHalf || IsSingle || IsUInt8) && (IsCUDA || IsMetal);
 

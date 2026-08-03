@@ -359,4 +359,9 @@ NB_MODULE(call_ext, m) {
     nb::module_ metal = m.def_submodule("metal");
     bind<JitBackend::Metal>(metal);
 #endif
+
+#if defined(DRJIT_ENABLE_HIP)
+    nb::module_ hip = m.def_submodule("hip");
+    bind<JitBackend::HIP>(hip);
+#endif
 }

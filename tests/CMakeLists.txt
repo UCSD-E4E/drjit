@@ -24,6 +24,13 @@ function(add_drjit_test NAME)
     target_compile_definitions(${NAME} PRIVATE -DDRJIT_ENABLE_METAL)
   endif()
 
+  # Without this the HIP submodule is compiled out of every _ext module and the
+  # tests skip in a way that reads as "not applicable" rather than "not built".
+  # Same omission as src/extra/CMakeLists.txt had.
+  if (DRJIT_ENABLE_HIP)
+    target_compile_definitions(${NAME} PRIVATE -DDRJIT_ENABLE_HIP)
+  endif()
+
   if (MSVC)
     message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
     set_target_properties(${NAME} PROPERTIES

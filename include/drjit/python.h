@@ -85,7 +85,13 @@ NAMESPACE_BEGIN(drjit)
  * representation.
  */
 struct ArrayMeta {
-    uint32_t backend       : 2;
+    // 3 bits, not 2. JitBackend::HIP is 4 and silently truncated to 0 in a
+    // 2-bit field, which does not fail anywhere near the cause: the array
+    // simply claims the scalar backend, meta_get_module() hands back
+    // drjit.scalar, and the backend's own namespace comes out empty. The
+    // static_assert below is the actual fix -- adding a backend now breaks the
+    // build instead of the bindings.
+    uint32_t backend       : 3;
     uint32_t type          : 4;
     uint32_t ndim          : 3;
     uint32_t is_vector     : 1;
@@ -102,7 +108,28 @@ struct ArrayMeta {
     uint8_t shape[4];
 };
 
-static_assert(sizeof(ArrayMeta) == 8, "Structure packing issue");
+// 12 bytes, not 8: the bitfields used to fill a uint32_t exactly, and giving
+// `backend` its third bit pushes them into a second word. Neither neighbour
+// could spare one -- tsize_rel reaches exactly 64 for
+// Array<Array<Array<JitArray<float>,4>,4>,4>, and talign reaches 64 for
+// AVX-512-aligned types.
+//
+// The first word is still fully occupied by named fields (19 identity bits,
+// tsize_rel, and the low 6 bits of talign), so the identity of a type -- which
+// is what meta.h's operator== and meta_get_type()'s cache compare -- can still
+// be read out as a padding-free 8 bytes. See meta_identity() in meta.h; do not
+// memcmp the whole struct, because the second word is mostly padding and
+// padding is indeterminate.
+static_assert(sizeof(ArrayMeta) == 12, "Structure packing issue");
+
+/// Every JitBackend value must survive a round trip through ArrayMeta::backend.
+/// This is the third packed backend field in the codebase to be caught one bit
+/// too narrow (see also Variable::backend and AllocInfo in drjit-core), and in
+/// each case the symptom appeared far from the truncation. Assert it here so
+/// the next backend is a compile error.
+static_assert((uint32_t) JitBackend::Count <= 8,
+              "ArrayMeta::backend is 3 bits wide -- widen it (and re-check "
+              "sizeof(ArrayMeta)) before adding another JitBackend.");
 
 /// A large set of Dr.Jit operations are handled generically. This
 /// enumeration encodes indices into the ArraySupplement::op field
@@ -369,6 +396,7 @@ NB_INLINE void bind_init(ArrayBinding &b, nanobind::handle scope = {},
                      Size = sizeof(T),
                      RelSize = Size / Align;
 
+    // Bounded by ArrayMeta::tsize_rel and ::talign, both 7 bits wide.
     static_assert(Align < 0x80 && RelSize < 0x80 && RelSize * Align == Size,
                   "drjit::bind(): type is too large!");
 

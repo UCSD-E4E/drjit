@@ -433,6 +433,14 @@ void export_detail(nb::module_ &m) {
               return nb::make_tuple(major, minor);
           })
 
+     // Exposed so tests can ASK rather than hardcode a backend list. The
+     // cooperative-vector tests previously skipped on "is this CUDA, and is it
+     // older than 12.8" -- correct for the backends that existed when it was
+     // written, and silently wrong for one added later. On HIP the feature is
+     // absent entirely and the unsupported path aborts the process.
+     .def("coop_vec_supported",
+          [](JitBackend backend) { return jit_coop_vec_supported(backend); })
+
      .def("trace_func", &trace_func, "frame"_a, "event"_a,
           "arg"_a = nb::none())
 
